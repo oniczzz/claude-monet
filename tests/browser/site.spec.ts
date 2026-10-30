@@ -18,7 +18,15 @@ test('renders the full experience without runtime errors and broken local images
     await expect(page.locator(`#${id}`)).toBeAttached()
   }
   await page.locator('#contacts').scrollIntoViewIfNeeded()
-  await expect(page.locator('.hero-image img')).toHaveJSProperty('naturalWidth', 1200)
+  const hero = page.locator('.hero-image img')
+  const fallbackURL = new URL('image-fallback.svg', page.url()).href
+  // Unsplash is intentionally blocked above. SVG viewBox and responsive image
+  // candidates do not guarantee a fixed naturalWidth across browsers/viewports.
+  await expect(hero).toHaveJSProperty('currentSrc', fallbackURL)
+  await expect.poll(() => hero.evaluate((image: HTMLImageElement) =>
+    image.complete && image.naturalWidth > 0 && image.naturalHeight > 0,
+  )).toBe(true)
+  await hero.evaluate((image: HTMLImageElement) => image.decode())
   expect(errors).toEqual([])
 })
 
